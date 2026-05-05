@@ -11,7 +11,7 @@
   #header {
     position: sticky; top: 0; z-index: 10;
     background: #fff; border-bottom: 1px solid #ddd;
-    padding: 12px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
   }
   #header h1 { font-size: 18px; color: #222; }
@@ -19,10 +19,27 @@
   #header select { padding: 6px 12px; font-size: 14px; border: 1px solid #bbb; border-radius: 4px; cursor: pointer; }
   #title { margin-left: auto; font-size: 14px; color: #666; }
 
-  #stack { margin: 20px 120px; display: flex; flex-direction: column; gap: 16px; }
+  .tool-btn {
+    padding: 6px 12px; font-size: 14px; border: 1px solid #bbb; border-radius: 4px;
+    background: #fff; cursor: pointer; user-select: none;
+  }
+  .tool-btn:hover { background: #f5f5f5; }
+  .tool-btn.active { background: #ffeb3b; border-color: #fbc02d; font-weight: 600; }
+  .color-swatch {
+    width: 22px; height: 22px; border-radius: 50%; border: 2px solid #ccc; cursor: pointer; padding: 0;
+  }
+  .color-swatch.active { border-color: #333; box-shadow: 0 0 0 2px #fff inset; }
+
+  #stack { margin: 20px 120px; display: flex; flex-direction: column; gap: 16px; padding-bottom: 30px; }
   .panel { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; padding: 16px 24px; }
-  .panel h3 { font-size: 18px; color: #333; padding: 12px 18px; background: #f7f7f7; border-bottom: 1px solid #eee; font-weight: 600; }
   .panel-scroll { overflow-x: hidden; overflow-y: hidden; }
+  .img-wrap { position: relative; display: inline-block; }
+  .img-wrap img { display: block; width: 3400px; max-width: none; height: auto; }
+  .img-wrap canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
+  body.draw-mode .img-wrap img { cursor: crosshair; }
+  body.draw-mode .img-wrap canvas { pointer-events: auto; cursor: crosshair; }
+  .panel.missing { padding: 20px; text-align: center; color: #aaa; font-size: 13px; font-style: italic; }
+
   #master-scroll {
     position: fixed; left: 120px; right: 120px; bottom: 0; z-index: 50;
     height: 18px;
@@ -30,15 +47,7 @@
     overflow-x: auto; overflow-y: hidden;
     box-shadow: 0 -2px 6px rgba(0,0,0,0.15);
   }
-  #stack { padding-bottom: 30px; }
   #master-scroll-inner { height: 1px; }
-  .panel img { display: block; width: 3400px; max-width: none; height: auto; cursor: zoom-in; }
-  .panel.missing { padding: 20px; text-align: center; color: #aaa; font-size: 13px; font-style: italic; }
-
-  /* Lightbox */
-  #lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; cursor: zoom-out; align-items: center; justify-content: center; padding: 20px; }
-  #lightbox.show { display: flex; }
-  #lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; }
 </style>
 </head>
 <body>
@@ -47,26 +56,24 @@
   <h1>EngagementStream</h1>
   <label for="date-select">日期：</label>
   <select id="date-select"></select>
+
+  <button id="btn-draw" class="tool-btn">🖍 標註</button>
+  <button class="color-swatch active" data-color="rgba(255,235,59,0.45)" style="background:#ffeb3b" title="黃"></button>
+  <button class="color-swatch" data-color="rgba(255,82,82,0.45)" style="background:#ff5252" title="紅"></button>
+  <button class="color-swatch" data-color="rgba(33,150,243,0.45)" style="background:#2196f3" title="藍"></button>
+  <button id="btn-clear" class="tool-btn">清除</button>
+
   <span id="title"></span>
 </div>
 
 <div id="stack"></div>
 <div id="master-scroll"><div id="master-scroll-inner"></div></div>
 
-<div id="lightbox"><img id="lightbox-img" alt=""></div>
-
 <script>
-// ─────────── 設定區：新增一天，就在這裡加一行 ───────────
-// key = images/ 下的資料夾名（建議用日期，例如 "2025-04-22" 或 "0422"）
-// label = 下拉選單顯示的文字
-// prefix = 該資料夾內檔名的共同前綴（後面接 _overall / _video / _G1 / _G3 / _G6 / _grid .png）
 const DATA = [
   { key: "1132", label: "1132", prefix: "1132" },
-  // 範例：
-  // { key: "0429", label: "1132 CS101-01 Week 2", prefix: "1132_CS101_01_W2" },
 ];
 
-// 顯示順序（對應檔名後綴）
 const PANELS = [
   { suffix: "overall",  title: "整體投入" },
   { suffix: "video",    title: "影片縮圖" },
@@ -75,21 +82,75 @@ const PANELS = [
   { suffix: "G6",       title: "第 6 組" },
   { suffix: "grid",     title: "投入熱區圖" },
 ];
-// ────────────────────────────────────────────────────────
 
 const select = document.getElementById('date-select');
 const stack  = document.getElementById('stack');
 const titleEl = document.getElementById('title');
-const lb = document.getElementById('lightbox');
-const lbImg = document.getElementById('lightbox-img');
 
-// 建立日期選單
 DATA.forEach((d, i) => {
   const opt = document.createElement('option');
   opt.value = i;
   opt.textContent = d.label;
   select.appendChild(opt);
 });
+
+// ── 標註工具狀態 ──
+let drawMode = false;
+let drawColor = "rgba(255,235,59,0.45)";
+const PEN_WIDTH = 22;
+
+function setupCanvas(canvas, img) {
+  const ctx = canvas.getContext('2d');
+  const bands = []; // {x1, x2, color}
+  let drawing = false, startX = 0, currentX = 0, currentColor = drawColor;
+
+  function resize() {
+    canvas.width = img.offsetWidth;
+    canvas.height = img.offsetHeight;
+    redraw();
+  }
+  if (img.complete) resize();
+  else img.addEventListener('load', resize);
+  window.addEventListener('resize', resize);
+
+  function redraw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    bands.forEach(b => {
+      ctx.fillStyle = b.color;
+      ctx.fillRect(Math.min(b.x1, b.x2), 0, Math.abs(b.x2 - b.x1), canvas.height);
+    });
+    if (drawing) {
+      ctx.fillStyle = currentColor;
+      ctx.fillRect(Math.min(startX, currentX), 0, Math.abs(currentX - startX), canvas.height);
+    }
+  }
+  canvas._bands = bands;
+  canvas._redraw = redraw;
+
+  function xPos(e) {
+    const r = canvas.getBoundingClientRect();
+    return (e.clientX - r.left) * (canvas.width / r.width);
+  }
+  canvas.addEventListener('pointerdown', e => {
+    if (!drawMode) return;
+    drawing = true; startX = currentX = xPos(e); currentColor = drawColor;
+    canvas.setPointerCapture(e.pointerId);
+    redraw();
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!drawing) return;
+    currentX = xPos(e);
+    redraw();
+  });
+  function finish() {
+    if (!drawing) return;
+    drawing = false;
+    if (Math.abs(currentX - startX) > 2) bands.push({ x1: startX, x2: currentX, color: currentColor });
+    redraw();
+  }
+  canvas.addEventListener('pointerup', finish);
+  canvas.addEventListener('pointercancel', finish);
+}
 
 function render(idx) {
   const d = DATA[idx];
@@ -104,46 +165,72 @@ function render(idx) {
 
     const scroll = document.createElement('div');
     scroll.className = 'panel-scroll';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'img-wrap';
+
     const img = document.createElement('img');
     img.src = url;
     img.alt = p.title;
     img.loading = 'lazy';
     img.onerror = () => {
       panel.classList.add('missing');
-      panel.innerHTML = `<h3>${p.title}</h3><div style="padding:20px;color:#aaa;font-style:italic;">（無此圖：${d.prefix}_${p.suffix}.png）</div>`;
+      panel.innerHTML = `<div style="padding:20px;color:#aaa;font-style:italic;">（無此圖：${d.prefix}_${p.suffix}.png）</div>`;
     };
-    img.onclick = () => { lbImg.src = url; lb.classList.add('show'); };
-    scroll.appendChild(img);
-    panel.appendChild(scroll);
 
+    const canvas = document.createElement('canvas');
+
+    wrap.appendChild(img);
+    wrap.appendChild(canvas);
+    scroll.appendChild(wrap);
+    panel.appendChild(scroll);
     stack.appendChild(panel);
+
+    setupCanvas(canvas, img);
   });
 }
 
-// 統一的橫向捲軸
+// ── 統一橫向捲軸 ──
 const master = document.getElementById('master-scroll');
 const masterInner = document.getElementById('master-scroll-inner');
 
 function updateMasterWidth() {
-  const sample = document.querySelector('.panel-scroll img');
-  if (!sample) return;
-  const w = sample.naturalWidth ? Math.min(sample.scrollWidth || 2800, 2800) : 2800;
-  // 用實際 panel 內容寬度（CSS 設成 2800px）
-  masterInner.style.width = (document.querySelector('.panel img')?.offsetWidth || 2800) + 'px';
+  const w = document.querySelector('.img-wrap img')?.offsetWidth || 3400;
+  masterInner.style.width = w + 'px';
 }
-
 master.addEventListener('scroll', () => {
   const left = master.scrollLeft;
   document.querySelectorAll('.panel-scroll').forEach(el => { el.scrollLeft = left; });
 });
-
 window.addEventListener('resize', updateMasterWidth);
 
-select.addEventListener('change', e => { render(+e.target.value); setTimeout(updateMasterWidth, 50); });
-lb.addEventListener('click', () => lb.classList.remove('show'));
+// ── 工具列 ──
+const btnDraw = document.getElementById('btn-draw');
+const btnClear = document.getElementById('btn-clear');
+btnDraw.addEventListener('click', () => {
+  drawMode = !drawMode;
+  document.body.classList.toggle('draw-mode', drawMode);
+  btnDraw.classList.toggle('active', drawMode);
+});
+btnClear.addEventListener('click', () => {
+  document.querySelectorAll('.img-wrap canvas').forEach(c => {
+    if (c._bands) c._bands.length = 0;
+    if (c._redraw) c._redraw();
+    else c.getContext('2d').clearRect(0, 0, c.width, c.height);
+  });
+});
+document.querySelectorAll('.color-swatch').forEach(sw => {
+  sw.addEventListener('click', () => {
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+    sw.classList.add('active');
+    drawColor = sw.dataset.color;
+  });
+});
+
+select.addEventListener('change', e => { render(+e.target.value); setTimeout(updateMasterWidth, 100); });
 
 render(0);
-setTimeout(updateMasterWidth, 100);
+setTimeout(updateMasterWidth, 200);
 </script>
 </body>
 </html>
