@@ -74,13 +74,9 @@ const DATA = [
   { key: "1132", label: "1132", prefix: "1132" },
 ];
 
+const IMG_WIDTH = 3400; // 圖片框總寬度（px）
 const PANELS = [
-  { suffix: "overall",  title: "整體投入" },
-  { suffix: "video",    title: "影片縮圖" },
-  { suffix: "G1",       title: "第 1 組" },
-  { suffix: "G3",       title: "第 3 組" },
-  { suffix: "G6",       title: "第 6 組" },
-  { suffix: "grid",     title: "投入熱區圖" },
+  { suffix: "combined", title: "整體呈現", cropTop: 481 },
 ];
 
 const select = document.getElementById('date-select');
@@ -168,17 +164,25 @@ function render(idx) {
 
     const wrap = document.createElement('div');
     wrap.className = 'img-wrap';
+    const pad = p.leftPad || 0;
+    const crop = p.cropTop || 0;
+    wrap.style.width = IMG_WIDTH + 'px';
+    wrap.style.paddingLeft = pad + 'px';
+    if (crop) wrap.style.overflow = 'hidden';
 
     const img = document.createElement('img');
     img.src = url;
     img.alt = p.title;
     img.loading = 'lazy';
+    img.style.width = (IMG_WIDTH - pad) + 'px';
+    if (crop) img.style.marginTop = `-${crop}px`;
     img.onerror = () => {
       panel.classList.add('missing');
       panel.innerHTML = `<div style="padding:20px;color:#aaa;font-style:italic;">（無此圖：${d.prefix}_${p.suffix}.png）</div>`;
     };
 
     const canvas = document.createElement('canvas');
+    canvas.style.left = pad + 'px';
 
     wrap.appendChild(img);
     wrap.appendChild(canvas);
