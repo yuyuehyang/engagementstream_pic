@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EngagementStream 圖像瀏覽</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { overflow-x: hidden; }
+  body { font-family: 'Segoe UI', 'Microsoft JhengHei', Arial, sans-serif; background: #f0f0f0; color: #333; }
+  #header {
+    position: sticky; top: 0; z-index: 10;
+    background: #fff; border-bottom: 1px solid #ddd;
+    padding: 12px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  #header h1 { font-size: 18px; color: #222; }
+  #header label { font-size: 14px; color: #555; }
+  #header select { padding: 6px 12px; font-size: 14px; border: 1px solid #bbb; border-radius: 4px; cursor: pointer; }
+  #title { margin-left: auto; font-size: 14px; color: #666; }
+
+  #stack { margin: 20px 120px; display: flex; flex-direction: column; gap: 16px; }
+  .panel { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; padding: 16px 24px; }
+  .panel h3 { font-size: 18px; color: #333; padding: 12px 18px; background: #f7f7f7; border-bottom: 1px solid #eee; font-weight: 600; }
+  .panel-scroll { overflow-x: hidden; overflow-y: hidden; }
+  #master-scroll {
+    position: fixed; left: 120px; right: 120px; bottom: 0; z-index: 50;
+    height: 18px;
+    background: #fff; border-top: 1px solid #ddd; border-radius: 4px 4px 0 0;
+    overflow-x: auto; overflow-y: hidden;
+    box-shadow: 0 -2px 6px rgba(0,0,0,0.15);
+  }
+  #stack { padding-bottom: 30px; }
+  #master-scroll-inner { height: 1px; }
+  .panel img { display: block; width: 3400px; max-width: none; height: auto; cursor: zoom-in; }
+  .panel.missing { padding: 20px; text-align: center; color: #aaa; font-size: 13px; font-style: italic; }
+
+  /* Lightbox */
+  #lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; cursor: zoom-out; align-items: center; justify-content: center; padding: 20px; }
+  #lightbox.show { display: flex; }
+  #lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>EngagementStream</h1>
+  <label for="date-select">日期：</label>
+  <select id="date-select"></select>
+  <span id="title"></span>
+</div>
+
+<div id="stack"></div>
+<div id="master-scroll"><div id="master-scroll-inner"></div></div>
+
+<div id="lightbox"><img id="lightbox-img" alt=""></div>
+
+<script>
+// ─────────── 設定區：新增一天，就在這裡加一行 ───────────
+// key = images/ 下的資料夾名（建議用日期，例如 "2025-04-22" 或 "0422"）
+// label = 下拉選單顯示的文字
+// prefix = 該資料夾內檔名的共同前綴（後面接 _overall / _video / _G1 / _G3 / _G6 / _grid .png）
+const DATA = [
+  { key: "1132", label: "1132", prefix: "1132" },
+  // 範例：
+  // { key: "0429", label: "1132 CS101-01 Week 2", prefix: "1132_CS101_01_W2" },
+];
+
+// 顯示順序（對應檔名後綴）
+const PANELS = [
+  { suffix: "overall",  title: "整體投入" },
+  { suffix: "video",    title: "影片縮圖" },
+  { suffix: "G1",       title: "第 1 組" },
+  { suffix: "G3",       title: "第 3 組" },
+  { suffix: "G6",       title: "第 6 組" },
+  { suffix: "grid",     title: "投入熱區圖" },
+];
+// ────────────────────────────────────────────────────────
+
+const select = document.getElementById('date-select');
+const stack  = document.getElementById('stack');
+const titleEl = document.getElementById('title');
+const lb = document.getElementById('lightbox');
+const lbImg = document.getElementById('lightbox-img');
+
+// 建立日期選單
+DATA.forEach((d, i) => {
+  const opt = document.createElement('option');
+  opt.value = i;
+  opt.textContent = d.label;
+  select.appendChild(opt);
+});
+
+function render(idx) {
+  const d = DATA[idx];
+  if (!d) return;
+  titleEl.textContent = d.label;
+  stack.innerHTML = '';
+
+  PANELS.forEach(p => {
+    const panel = document.createElement('div');
+    panel.className = 'panel';
+    const url = `images/${d.key}/${d.prefix}_${p.suffix}.png`;
+
+    const scroll = document.createElement('div');
+    scroll.className = 'panel-scroll';
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = p.title;
+    img.loading = 'lazy';
+    img.onerror = () => {
+      panel.classList.add('missing');
+      panel.innerHTML = `<h3>${p.title}</h3><div style="padding:20px;color:#aaa;font-style:italic;">（無此圖：${d.prefix}_${p.suffix}.png）</div>`;
+    };
+    img.onclick = () => { lbImg.src = url; lb.classList.add('show'); };
+    scroll.appendChild(img);
+    panel.appendChild(scroll);
+
+    stack.appendChild(panel);
+  });
+}
+
+// 統一的橫向捲軸
+const master = document.getElementById('master-scroll');
+const masterInner = document.getElementById('master-scroll-inner');
+
+function updateMasterWidth() {
+  const sample = document.querySelector('.panel-scroll img');
+  if (!sample) return;
+  const w = sample.naturalWidth ? Math.min(sample.scrollWidth || 2800, 2800) : 2800;
+  // 用實際 panel 內容寬度（CSS 設成 2800px）
+  masterInner.style.width = (document.querySelector('.panel img')?.offsetWidth || 2800) + 'px';
+}
+
+master.addEventListener('scroll', () => {
+  const left = master.scrollLeft;
+  document.querySelectorAll('.panel-scroll').forEach(el => { el.scrollLeft = left; });
+});
+
+window.addEventListener('resize', updateMasterWidth);
+
+select.addEventListener('change', e => { render(+e.target.value); setTimeout(updateMasterWidth, 50); });
+lb.addEventListener('click', () => lb.classList.remove('show'));
+
+render(0);
+setTimeout(updateMasterWidth, 100);
+</script>
+</body>
+</html>
