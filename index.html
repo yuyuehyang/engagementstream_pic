@@ -6,7 +6,7 @@
 <title>EngagementStream 圖像瀏覽</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { overflow-x: hidden; }
+  html, body { overflow-x: auto; overflow-y: auto; }
   body { font-family: 'Segoe UI', 'Microsoft JhengHei', Arial, sans-serif; background: #f0f0f0; color: #333; }
   #header {
     position: sticky; top: 0; z-index: 10;
@@ -31,8 +31,8 @@
   .color-swatch.active { border-color: #333; box-shadow: 0 0 0 2px #fff inset; }
 
   #stack { margin: 20px clamp(10px, 8vw, 120px); display: flex; flex-direction: column; gap: 16px; padding-bottom: 30px; }
-  .panel { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; padding: 16px 24px; }
-  .panel-scroll { overflow-x: hidden; overflow-y: hidden; }
+  .panel { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 16px 24px; display: inline-block; }
+  .panel-scroll { overflow: visible; }
   .img-wrap { position: relative; display: inline-block; }
   .img-wrap img { display: block; max-width: none; height: auto; }
   .img-wrap canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
@@ -40,14 +40,7 @@
   body.draw-mode .img-wrap canvas { pointer-events: auto; cursor: crosshair; }
   .panel.missing { padding: 20px; text-align: center; color: #aaa; font-size: 13px; font-style: italic; }
 
-  #master-scroll {
-    position: fixed; left: clamp(10px, 8vw, 120px); right: clamp(10px, 8vw, 120px); bottom: 0; z-index: 50;
-    height: 18px;
-    background: #fff; border-top: 1px solid #ddd; border-radius: 4px 4px 0 0;
-    overflow-x: auto; overflow-y: hidden;
-    box-shadow: 0 -2px 6px rgba(0,0,0,0.15);
-  }
-  #master-scroll-inner { height: 1px; }
+  #master-scroll { display: none; }
 
   /* ── 手機版：圖片自動縮成螢幕寬度，不用水平捲動 ── */
   @media (max-width: 768px) {
@@ -248,10 +241,20 @@ function updateMasterWidth() {
   const w = img?.offsetWidth || 0;
   masterInner.style.width = w + 'px';
 }
+let syncing = false;
 master.addEventListener('scroll', () => {
-  const left = master.scrollLeft;
-  document.querySelectorAll('.panel-scroll').forEach(el => { el.scrollLeft = left; });
+  if (syncing) return;
+  syncing = true;
+  document.querySelectorAll('.panel-scroll').forEach(el => { el.scrollLeft = master.scrollLeft; });
+  requestAnimationFrame(() => { syncing = false; });
 });
+document.addEventListener('scroll', e => {
+  if (syncing) return;
+  if (!e.target.classList || !e.target.classList.contains('panel-scroll')) return;
+  syncing = true;
+  master.scrollLeft = e.target.scrollLeft;
+  requestAnimationFrame(() => { syncing = false; });
+}, true);
 window.addEventListener('resize', updateMasterWidth);
 
 // ── 工具列 ──
