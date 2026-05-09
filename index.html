@@ -54,7 +54,7 @@
 
 <div id="header">
   <h1>EngagementStream</h1>
-  <label for="date-select">日期：</label>
+  <label for="date-select">週次：</label>
   <select id="date-select"></select>
 
   <button id="btn-draw" class="tool-btn">🖍 標註</button>
@@ -70,25 +70,41 @@
 <div id="master-scroll"><div id="master-scroll-inner"></div></div>
 
 <script>
-const DATA = [
-  { key: "1132", label: "1132", prefix: "1132" },
-];
+// ── 課程設定：新增/移除課程，或某課程加一週圖，都改這裡 ──
+const COURSES = {
+  AM: { label: "AM", weeks: ["W11"] },
+  CC: { label: "CC", weeks: ["W10", "W11"] },
+  EM: { label: "EM", weeks: [] },
+  NB: { label: "NB", weeks: [] },
+};
 
 const IMG_WIDTH = 3400; // 圖片框總寬度（px）
-const PANELS = [
-  { suffix: "combined", title: "整體呈現", cropTop: 481 },
-];
+const CROP_TOP = 481;   // combined 圖最上方裁掉多少 px
 
 const select = document.getElementById('date-select');
 const stack  = document.getElementById('stack');
 const titleEl = document.getElementById('title');
 
-DATA.forEach((d, i) => {
-  const opt = document.createElement('option');
-  opt.value = i;
-  opt.textContent = d.label;
-  select.appendChild(opt);
-});
+// ── 由 URL hash 解析課程與週次；hash 範例：#CC、#CCW10、#CCW11 ──
+function parseHash() {
+  const raw = (location.hash || '').replace('#', '').toUpperCase();
+  // 比對課程代號（取最長前綴），剩下的就是週次
+  const courseKey = Object.keys(COURSES).find(k => raw.startsWith(k)) || null;
+  if (!courseKey) return { course: null, week: null };
+  const week = raw.slice(courseKey.length) || null; // 例如 "W10"
+  return { course: courseKey, week };
+}
+function fillWeekSelect(courseKey, preferredWeek) {
+  select.innerHTML = '';
+  const c = COURSES[courseKey];
+  if (!c) return;
+  c.weeks.forEach(w => {
+    const opt = document.createElement('option');
+    opt.value = w; opt.textContent = w;
+    select.appendChild(opt);
+  });
+  if (preferredWeek && c.weeks.includes(preferredWeek)) select.value = preferredWeek;
+}
 
 // ── 標註工具狀態 ──
 let drawMode = false;
@@ -148,50 +164,58 @@ function setupCanvas(canvas, img) {
   canvas.addEventListener('pointercancel', finish);
 }
 
-function render(idx) {
-  const d = DATA[idx];
-  if (!d) return;
-  titleEl.textContent = d.label;
+function render() {
   stack.innerHTML = '';
+  const { course: courseKey } = parseHash();
+  if (!courseKey) {
+    titleEl.textContent = '';
+    stack.innerHTML = `<div class="panel" style="text-align:center;color:#888;font-size:15px;line-height:1.8;">
+      請從你的專屬連結進入頁面。<br>
+      <span style="font-size:13px;color:#aaa;">（網址結尾須加上 <code>#AM</code>、<code>#CC</code>、<code>#EM</code> 或 <code>#NB</code>）</span>
+    </div>`;
+    return;
+  }
+  const c = COURSES[courseKey];
+  titleEl.textContent = c.label;
 
-  PANELS.forEach(p => {
-    const panel = document.createElement('div');
-    panel.className = 'panel';
-    const url = `images/${d.key}/${d.prefix}_${p.suffix}.png`;
+  const week = select.value;
+  if (!week) {
+    stack.innerHTML = `<div class="panel" style="text-align:center;color:#888;padding:30px;">尚無 ${c.label} 的圖片資料</div>`;
+    return;
+  }
 
-    const scroll = document.createElement('div');
-    scroll.className = 'panel-scroll';
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  const url = `images/${courseKey}/${week}_combined.png`;
 
-    const wrap = document.createElement('div');
-    wrap.className = 'img-wrap';
-    const pad = p.leftPad || 0;
-    const crop = p.cropTop || 0;
-    wrap.style.width = IMG_WIDTH + 'px';
-    wrap.style.paddingLeft = pad + 'px';
-    if (crop) wrap.style.overflow = 'hidden';
+  const scroll = document.createElement('div');
+  scroll.className = 'panel-scroll';
 
-    const img = document.createElement('img');
-    img.src = url;
-    img.alt = p.title;
-    img.loading = 'lazy';
-    img.style.width = (IMG_WIDTH - pad) + 'px';
-    if (crop) img.style.marginTop = `-${crop}px`;
-    img.onerror = () => {
-      panel.classList.add('missing');
-      panel.innerHTML = `<div style="padding:20px;color:#aaa;font-style:italic;">（無此圖：${d.prefix}_${p.suffix}.png）</div>`;
-    };
+  const wrap = document.createElement('div');
+  wrap.className = 'img-wrap';
+  wrap.style.width = IMG_WIDTH + 'px';
+  if (CROP_TOP) wrap.style.overflow = 'hidden';
 
-    const canvas = document.createElement('canvas');
-    canvas.style.left = pad + 'px';
+  const img = document.createElement('img');
+  img.src = url;
+  img.alt = `${c.label} ${week}`;
+  img.loading = 'lazy';
+  img.style.width = IMG_WIDTH + 'px';
+  if (CROP_TOP) img.style.marginTop = `-${CROP_TOP}px`;
+  img.onerror = () => {
+    panel.classList.add('missing');
+    panel.innerHTML = `<div style="padding:20px;color:#aaa;font-style:italic;text-align:center;">（無此圖：${week}_combined.png）</div>`;
+  };
 
-    wrap.appendChild(img);
-    wrap.appendChild(canvas);
-    scroll.appendChild(wrap);
-    panel.appendChild(scroll);
-    stack.appendChild(panel);
+  const canvas = document.createElement('canvas');
 
-    setupCanvas(canvas, img);
-  });
+  wrap.appendChild(img);
+  wrap.appendChild(canvas);
+  scroll.appendChild(wrap);
+  panel.appendChild(scroll);
+  stack.appendChild(panel);
+
+  setupCanvas(canvas, img);
 }
 
 // ── 統一橫向捲軸 ──
@@ -231,9 +255,27 @@ document.querySelectorAll('.color-swatch').forEach(sw => {
   });
 });
 
-select.addEventListener('change', e => { render(+e.target.value); setTimeout(updateMasterWidth, 100); });
+let suppressHashUpdate = false;
+select.addEventListener('change', () => {
+  const { course } = parseHash();
+  if (course) {
+    suppressHashUpdate = true;
+    location.hash = course + select.value;
+  }
+  render();
+  setTimeout(updateMasterWidth, 100);
+});
+window.addEventListener('hashchange', () => {
+  if (suppressHashUpdate) { suppressHashUpdate = false; render(); setTimeout(updateMasterWidth, 100); return; }
+  const { course, week } = parseHash();
+  fillWeekSelect(course, week);
+  render();
+  setTimeout(updateMasterWidth, 100);
+});
 
-render(0);
+const initial = parseHash();
+fillWeekSelect(initial.course, initial.week);
+render();
 setTimeout(updateMasterWidth, 200);
 </script>
 </body>
