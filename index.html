@@ -48,6 +48,19 @@
     box-shadow: 0 -2px 6px rgba(0,0,0,0.15);
   }
   #master-scroll-inner { height: 1px; }
+
+  /* ── 手機版：圖片自動縮成螢幕寬度，不用水平捲動 ── */
+  @media (max-width: 768px) {
+    #stack { margin: 12px 8px; padding-bottom: 8px; }
+    .panel { padding: 8px; }
+    .img-wrap { width: 100% !important; padding-left: 0 !important; display: block; }
+    .img-wrap img { width: 100% !important; margin-top: calc(-481 / 3400 * 100vw) !important; }
+    .img-wrap canvas { left: 0 !important; }
+    #master-scroll { display: none; }
+    #header { padding: 8px 10px; gap: 8px; }
+    #header h1 { font-size: 15px; }
+    #title { width: 100%; margin-left: 0; font-size: 12px; }
+  }
 </style>
 </head>
 <body>
