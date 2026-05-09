@@ -34,7 +34,7 @@
   .panel { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; padding: 16px 24px; }
   .panel-scroll { overflow-x: hidden; overflow-y: hidden; }
   .img-wrap { position: relative; display: inline-block; }
-  .img-wrap img { display: block; width: 3400px; max-width: none; height: auto; }
+  .img-wrap img { display: block; max-width: none; height: auto; }
   .img-wrap canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
   body.draw-mode .img-wrap img { cursor: crosshair; }
   body.draw-mode .img-wrap canvas { pointer-events: auto; cursor: crosshair; }
@@ -54,7 +54,7 @@
     #stack { margin: 12px 8px; padding-bottom: 8px; }
     .panel { padding: 8px; }
     .img-wrap { width: 100% !important; padding-left: 0 !important; display: block; }
-    .img-wrap img { width: 100% !important; margin-top: calc(-481 / 3400 * 100vw) !important; }
+    .img-wrap img { width: 100% !important; margin-top: 0 !important; }
     .img-wrap canvas { left: 0 !important; }
     #master-scroll { display: none; }
     #header { padding: 8px 10px; gap: 8px; }
@@ -91,8 +91,7 @@ const COURSES = {
   NB: { label: "Neural and Behavioral Modeling", weeks: [] },
 };
 
-const IMG_WIDTH = 3400; // 圖片框總寬度（px）
-const CROP_TOP = 481;   // combined 圖最上方裁掉多少 px
+const CROP_TOP = 0;   // combined 圖最上方裁掉多少 px（依原始解析度計算；0 = 不裁切）
 
 const select = document.getElementById('date-select');
 const stack  = document.getElementById('stack');
@@ -216,15 +215,14 @@ function render() {
 
   const wrap = document.createElement('div');
   wrap.className = 'img-wrap';
-  wrap.style.width = IMG_WIDTH + 'px';
   if (CROP_TOP) wrap.style.overflow = 'hidden';
 
   const img = document.createElement('img');
   img.src = url;
   img.alt = `${c.label} ${week}`;
   img.loading = 'lazy';
-  img.style.width = IMG_WIDTH + 'px';
   if (CROP_TOP) img.style.marginTop = `-${CROP_TOP}px`;
+  img.addEventListener('load', () => setTimeout(updateMasterWidth, 30));
   img.onerror = () => {
     panel.classList.add('missing');
     panel.innerHTML = `<div style="padding:20px;color:#aaa;font-style:italic;text-align:center;">（無此圖：${week}_combined.png）</div>`;
@@ -246,7 +244,8 @@ const master = document.getElementById('master-scroll');
 const masterInner = document.getElementById('master-scroll-inner');
 
 function updateMasterWidth() {
-  const w = document.querySelector('.img-wrap img')?.offsetWidth || 3400;
+  const img = document.querySelector('.img-wrap img');
+  const w = img?.offsetWidth || 0;
   masterInner.style.width = w + 'px';
 }
 master.addEventListener('scroll', () => {
