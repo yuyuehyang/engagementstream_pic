@@ -26,10 +26,8 @@
   }
   .tool-btn:hover { background: #f5f5f5; }
   .tool-btn.active { background: #ffeb3b; border-color: #fbc02d; font-weight: 600; }
-  .color-swatch {
-    width: 22px; height: 22px; border-radius: 50%; border: 2px solid #ccc; cursor: pointer; padding: 0;
-  }
-  .color-swatch.active { border-color: #333; box-shadow: 0 0 0 2px #fff inset; }
+  .hint { font-size: 12px; color: #666; line-height: 1.3; }
+  .hint b { color: #c62828; }
 
   #stack { margin: 12px clamp(10px, 4vw, 60px); }
   .panel {
@@ -73,11 +71,9 @@
   <label for="date-select">週次：</label>
   <select id="date-select"></select>
 
-  <button id="btn-draw" class="tool-btn">🖍 標註</button>
-  <button class="color-swatch active" data-color="rgba(255,235,59,0.45)" style="background:#ffeb3b" title="黃"></button>
-  <button class="color-swatch" data-color="rgba(255,82,82,0.45)" style="background:#ff5252" title="紅"></button>
-  <button class="color-swatch" data-color="rgba(33,150,243,0.45)" style="background:#2196f3" title="藍"></button>
+  <button id="btn-draw" class="tool-btn">檢視尺標</button>
   <button id="btn-clear" class="tool-btn">清除</button>
+  <span class="hint">※ 僅為輔助觀察的時間標記，<b>不會被儲存</b>；實際標註請於表單中填寫時間</span>
 
   <span id="title"></span>
 </div>
@@ -322,13 +318,6 @@ btnClear.addEventListener('click', () => {
     if (c._bands) c._bands.length = 0;
     if (c._redraw) c._redraw();
     else c.getContext('2d').clearRect(0, 0, c.width, c.height);
-  });
-});
-document.querySelectorAll('.color-swatch').forEach(sw => {
-  sw.addEventListener('click', () => {
-    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
-    sw.classList.add('active');
-    drawColor = sw.dataset.color;
   });
 });
 
