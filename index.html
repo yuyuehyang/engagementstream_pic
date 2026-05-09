@@ -30,7 +30,7 @@
   }
   .color-swatch.active { border-color: #333; box-shadow: 0 0 0 2px #fff inset; }
 
-  #stack { margin: 20px 120px; display: flex; flex-direction: column; gap: 16px; padding-bottom: 30px; }
+  #stack { margin: 20px clamp(10px, 8vw, 120px); display: flex; flex-direction: column; gap: 16px; padding-bottom: 30px; }
   .panel { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; padding: 16px 24px; }
   .panel-scroll { overflow-x: hidden; overflow-y: hidden; }
   .img-wrap { position: relative; display: inline-block; }
@@ -41,7 +41,7 @@
   .panel.missing { padding: 20px; text-align: center; color: #aaa; font-size: 13px; font-style: italic; }
 
   #master-scroll {
-    position: fixed; left: 120px; right: 120px; bottom: 0; z-index: 50;
+    position: fixed; left: clamp(10px, 8vw, 120px); right: clamp(10px, 8vw, 120px); bottom: 0; z-index: 50;
     height: 18px;
     background: #fff; border-top: 1px solid #ddd; border-radius: 4px 4px 0 0;
     overflow-x: auto; overflow-y: hidden;
