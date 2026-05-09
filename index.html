@@ -87,7 +87,7 @@
 const COURSES = {
   AM: { label: "Applied Mechanics 2", weeks: ["W11"] },
   CC: { label: "Bending the Curve: Climate Change Solutions", weeks: ["W10", "W11"] },
-  EM: { label: "Engineering Mathematics (2)", weeks: [] },
+  EM: { label: "Engineering Mathematics (2)", weeks: ["W10_Wed", "W11_Mon", "W11_Wed"] },
   NB: { label: "Neural and Behavioral Modeling", weeks: [] },
 };
 
@@ -100,12 +100,20 @@ const titleEl = document.getElementById('title');
 
 // ── 由 URL hash 解析課程與週次；hash 範例：#CC、#CCW10、#CCW11 ──
 function parseHash() {
-  const raw = (location.hash || '').replace('#', '').toUpperCase();
-  // 比對課程代號（取最長前綴），剩下的就是週次
-  const courseKey = Object.keys(COURSES).find(k => raw.startsWith(k)) || null;
+  const raw = (location.hash || '').replace('#', '');
+  if (!raw) return { course: null, week: null };
+  // 取課程代號（前 2 字大寫比對），剩下的是週次代號（保留原始大小寫）
+  const upper = raw.toUpperCase();
+  const courseKey = Object.keys(COURSES).find(k => upper.startsWith(k)) || null;
   if (!courseKey) return { course: null, week: null };
-  const week = raw.slice(courseKey.length) || null; // 例如 "W10"
+  const week = raw.slice(courseKey.length) || null;
   return { course: courseKey, week };
+}
+function findWeek(courseKey, weekInput) {
+  if (!weekInput) return null;
+  const c = COURSES[courseKey];
+  if (!c) return null;
+  return c.weeks.find(w => w.toLowerCase() === weekInput.toLowerCase()) || null;
 }
 function fillWeekSelect(courseKey, preferredWeek) {
   select.innerHTML = '';
@@ -113,10 +121,12 @@ function fillWeekSelect(courseKey, preferredWeek) {
   if (!c) return;
   c.weeks.forEach(w => {
     const opt = document.createElement('option');
-    opt.value = w; opt.textContent = w;
+    opt.value = w;
+    opt.textContent = w.replace(/_/g, ' '); // 顯示時把底線換成空格
     select.appendChild(opt);
   });
-  if (preferredWeek && c.weeks.includes(preferredWeek)) select.value = preferredWeek;
+  const matched = findWeek(courseKey, preferredWeek);
+  if (matched) select.value = matched;
 }
 
 // ── 標註工具狀態 ──
