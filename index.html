@@ -6,6 +6,7 @@
 <title>EngagementStream 圖像瀏覽</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { overscroll-behavior-x: none; }
   html, body { overflow: hidden; height: 100%; overscroll-behavior: none; }
   body { font-family: 'Segoe UI', 'Microsoft JhengHei', Arial, sans-serif; background: #f0f0f0; color: #333; }
   #header {
@@ -293,6 +294,20 @@ document.addEventListener('scroll', e => {
   requestAnimationFrame(() => { syncing = false; });
 }, true);
 window.addEventListener('resize', updateMasterWidth);
+
+// 全域攔截 wheel，徹底防止 Chrome 兩指水平滑動觸發「返回上一頁」
+document.addEventListener('wheel', e => {
+  // 只在 panel 裡面攔截，並讓 panel 自己處理捲動
+  const scroll = e.target.closest && e.target.closest('.panel-scroll');
+  if (scroll) {
+    e.preventDefault();
+    scroll.scrollLeft += e.deltaX;
+    scroll.scrollTop  += e.deltaY;
+  } else {
+    // panel 外也阻止水平滑動觸發歷史導航
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) e.preventDefault();
+  }
+}, { passive: false });
 
 // ── 工具列 ──
 const btnDraw = document.getElementById('btn-draw');
