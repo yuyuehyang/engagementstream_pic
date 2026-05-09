@@ -41,7 +41,8 @@
     cursor: grab; user-select: none;
     scrollbar-width: none;
     overscroll-behavior: none;
-    touch-action: none;
+    touch-action: pan-x pan-y;
+    -webkit-overflow-scrolling: touch;
   }
   .panel-scroll::-webkit-scrollbar { display: none; }
   .panel-scroll.panning { cursor: grabbing; }
@@ -73,7 +74,7 @@
 
   <button id="btn-draw" class="tool-btn">檢視尺標</button>
   <button id="btn-clear" class="tool-btn">清除</button>
-  <span class="hint">※ 僅為輔助觀察的時間標記，<b>不會被儲存</b>；實際標註請於表單中填寫時間</span>
+  <span class="hint">※ 僅為輔助觀察的時間標記，<b>不會被儲存</b>；實際標註請於問卷中填寫時間</span>
 
   <span id="title"></span>
 </div>
@@ -250,6 +251,7 @@ function setupPan(scroll) {
   }, { passive: false });
   scroll.addEventListener('pointerdown', e => {
     if (drawMode) return; // 標註模式時讓 canvas 接管
+    if (e.pointerType === 'touch') return; // 觸控用瀏覽器原生捲動，較順暢
     panning = true;
     sx = e.clientX; sy = e.clientY;
     sl = scroll.scrollLeft; st = scroll.scrollTop;
