@@ -56,6 +56,28 @@
 
   #master-scroll { display: none; }
 
+  /* 座位圖彈窗 */
+  #seat-modal {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.65);
+    align-items: center; justify-content: center;
+    padding: 40px;
+  }
+  #seat-modal.open { display: flex; }
+  #seat-modal img {
+    max-width: 100%; max-height: 100%;
+    background: #fff; border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  #seat-close {
+    position: absolute; top: 16px; right: 20px;
+    width: 40px; height: 40px; border-radius: 50%;
+    background: #fff; border: none; cursor: pointer;
+    font-size: 22px; line-height: 1; color: #333;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  #seat-close:hover { background: #f0f0f0; }
+
   /* ── 手機版：標頭緊湊，圖框照樣可拖曳平移 ── */
   @media (max-width: 768px) {
     #stack { margin: 8px; }
@@ -87,10 +109,21 @@
   <span class="hint">※ 僅為輔助觀察的時間標記，<b>不會被儲存</b>；實際標註請於問卷中填寫時間</span>
 
   <span id="title"></span>
+
+  <button id="btn-seat" class="tool-btn" title="座位編號圖">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+      <path d="M6 4h12v8H6z M5 13h14v2H5z M6 16h2v5H6z M16 16h2v5h-2z"/>
+    </svg>座位編號圖
+  </button>
 </div>
 
 <div id="stack"></div>
 <div id="master-scroll"><div id="master-scroll-inner"></div></div>
+
+<div id="seat-modal" role="dialog" aria-modal="true" aria-label="座位編號圖">
+  <button id="seat-close" aria-label="關閉">✕</button>
+  <img src="images/table.png" alt="座位編號圖">
+</div>
 
 <script>
 // ── 課程設定：新增/移除課程，或某課程加一週圖，都改這裡 ──
@@ -325,6 +358,16 @@ btnDraw.addEventListener('click', () => {
   document.body.classList.toggle('draw-mode', drawMode);
   btnDraw.classList.toggle('active', drawMode);
 });
+const seatModal = document.getElementById('seat-modal');
+const seatClose = document.getElementById('seat-close');
+const btnSeat = document.getElementById('btn-seat');
+function openSeat() { seatModal.classList.add('open'); }
+function closeSeat() { seatModal.classList.remove('open'); }
+btnSeat.addEventListener('click', openSeat);
+seatClose.addEventListener('click', closeSeat);
+seatModal.addEventListener('click', e => { if (e.target === seatModal) closeSeat(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && seatModal.classList.contains('open')) closeSeat(); });
+
 btnClear.addEventListener('click', () => {
   document.querySelectorAll('.img-wrap canvas').forEach(c => {
     if (c._bands) c._bands.length = 0;
